@@ -1,6 +1,8 @@
-# Multimodal document QA benchmark
+# Equipment Manual QA
 
-Evaluate whether page images improve answers to questions about equipment manuals. The CLI retrieves a page and returns a cited answer or abstains. It compares a text reader, an image-aware reader, and a bounded agent that decides when to inspect the image.
+Ask a question about the included fictional office-equipment manuals. The local CLI retrieves a page and returns an answer with a page citation or abstains. It also prints the path to the page image and a trace of the tools it used.
+
+The benchmark measures when reading a page image improves answers. It compares a text-only reader, an always-image reader, and an agent that opens the image when searchable text is incomplete. It measures answer accuracy, citation accuracy, abstention, and latency.
 
 ## Run locally
 
@@ -24,15 +26,15 @@ On Linux, use the CPU wheel for the first install command.
 ../.venv/bin/python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0
 ```
 
-The smoke run trains the PyTorch reranker and checks the pipeline with a deterministic reader. To measure the pretrained model, download the pinned 513 MB weights once and run the real benchmark offline.
+The smoke run trains the PyTorch reranker and checks the pipeline with a deterministic reader. Download the pinned 513 MB vision-language model once to ask questions and run the full benchmark offline.
 
 ```sh
 ../.venv/bin/python -m docqa download
-HF_HUB_OFFLINE=1 ../.venv/bin/python -m docqa benchmark
 HF_HUB_OFFLINE=1 ../.venv/bin/python -m docqa ask --mode agent \
   --question 'What color is the AUX connector on Jade-2?'
+HF_HUB_OFFLINE=1 ../.venv/bin/python -m docqa benchmark
 ```
 
-The run writes the dataset, SHA-256 manifest, training losses, checkpoint, and per-case judgments to `../work/`. The ask command prints the selected page, the path to its evidence image, the tool sequence, and raw model output. Set `--work` and `--cache` to choose different directories.
+The demo question returns `blue` and cites page `Jade-2-p3`. The benchmark writes the dataset manifest, training losses, checkpoint, and per-question results to `../work/`. Set `--work` and `--cache` to choose different directories.
 
-[Benchmark method and limitations](docs/method.md)
+[Benchmark method](docs/method.md) · [Held-out results and failure examples](docs/results.md)
