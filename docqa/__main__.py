@@ -62,7 +62,7 @@ def main():
             args.mode, engine, page, args.question, dataset
         )
         print(json.dumps({"answer": prediction, "citation": citation, "trace": trace,
-                          "evidence_image": page["image"], "raw_outputs": outputs}, indent=2))
+                          "evidence_image": str(dataset / page["image"]), "raw_outputs": outputs}, indent=2))
         return
     results = evaluate.benchmark(pages, questions, dataset, ranker, engine, args.split)
     results["split"] = args.split

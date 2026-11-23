@@ -36,7 +36,8 @@ class BenchmarkTests(unittest.TestCase):
             self.assertEqual(len(result["cases"]), 72)
 
     def test_agent_retries_only_after_abstention(self):
-        page = {"id": "x-p1", "text": "sample", "image": "page.png"}
+        page = {"id": "x-p1", "document": "x", "text": "color sample",
+                "text_complete": True, "image": "page.png"}
 
         class Reader:
             def answer(self, question, text, image_path):
@@ -47,3 +48,21 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual([t["tool"] for t in trace], ["retrieve", "read_text", "inspect_image"])
         self.assertEqual(len(outputs), 2)
         self.assertEqual(model.normalize("8 seconds."), "8")
+        self.assertEqual(model.normalize("Answer: 3L."), "3")
+
+    def test_agent_routes_incomplete_text_and_rejects_off_topic_questions(self):
+        page = {"id": "x-p1", "document": "x", "text": "color sample",
+                "text_complete": False, "image": "page.png"}
+
+        class Reader:
+            def answer(self, question, text, image_path):
+                if image_path is None:
+                    raise AssertionError("Only image evidence is available")
+                return "Blue"
+
+        result = evaluate.answer("agent", Reader(), page, "Color?", Path("."))
+        self.assertEqual(result[0], "blue")
+        self.assertEqual([event["tool"] for event in result[2]], ["retrieve", "inspect_image"])
+        result = evaluate.answer("agent", Reader(), page, "Warranty?", Path("."))
+        self.assertEqual((result[0], result[1], result[3]), (None, None, []))
+        self.assertEqual(result[2][-1]["tool"], "abstain")

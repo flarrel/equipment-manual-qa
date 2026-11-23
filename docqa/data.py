@@ -40,11 +40,11 @@ def draw_page(path, title, kind, items, split, layout):
             draw.text((left + 17, y + 12), first, font=body, fill="black")
             draw.text((left + 278, y + 12), second, font=body, fill="black")
     if kind == "diagram":
-        X = {"train": (143, 288, 433), "validation": (125, 280, 435),
-             "test": (100, 260, 420)}[split]
+        positions = {"train": (143, 288, 433), "validation": (125, 280, 435),
+                     "test": (100, 260, 420)}[split]
         y = {"train": 179, "validation": 192, "test": 219}[split]
         draw.rounded_rectangle((52, y - 34, 587, y + 127), radius=18, outline="#42576b", width=5)
-        for x, (label, color) in zip(X, items, strict=True):
+        for x, (label, color) in zip(positions, items, strict=True):
             draw.ellipse((x, y, x + 63, y + 63), fill=COLORS[color], outline="black", width=3)
             draw.text((x, y + 77), label, font=body, fill="black")
     image.save(path)
@@ -64,7 +64,7 @@ def build(root: Path, seed: int = 581):
             colors = rng.sample(list(COLORS), 3)
             ports = list(zip(("IN", "AUX", "OUT"), colors, strict=True))
             if split != "train" and variant == 1:
-                ports.reverse()
+                ports = ports[1:] + ports[:1]
             instructions = [f"Hold RESET for {seconds} seconds.", "Wait for the status light.",
                             "Release the button before restarting."]
             data = [
@@ -78,7 +78,8 @@ def build(root: Path, seed: int = 581):
                 file = f"pages/{key}.png"
                 draw_page(root / file, f"{name} / {title}", kind, items, split, variant)
                 pages.append({"id": key, "document": name, "family": family, "split": split,
-                              "text": f"{name} {title}. {body}", "image": file})
+                              "text": f"{name} {title}. {body}",
+                              "text_complete": kind == "instructions", "image": file})
             for number, (category, wording, answer, page) in enumerate([
                 ("text", f"How many seconds should I hold RESET on {name}?", str(seconds), 1),
                 ("table", f"What is the reservoir capacity in liters on {name}?", str(liters), 2),

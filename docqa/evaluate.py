@@ -6,9 +6,13 @@ from statistics import median
 from time import perf_counter
 
 from .model import normalize
-from .retrieval import BM25
+from .retrieval import BM25, tokens
 
 MODES = ("text", "image", "agent")
+QUESTION_WORDS = frozenset({
+    "a", "an", "and", "are", "can", "do", "for", "how", "i", "in", "is",
+    "many", "much", "of", "on", "should", "the", "to", "what", "which", "with",
+})
 
 
 def answer(mode, model, page, question, root):
@@ -21,8 +25,13 @@ def answer(mode, model, page, question, root):
         outputs.append(raw)
         return normalize(raw)
 
-    predicted = call(mode == "image")
-    if mode == "agent" and predicted is None:
+    if mode == "agent":
+        query_terms = set(tokens(question)) - QUESTION_WORDS - {page["document"].lower()}
+        if not query_terms.intersection(tokens(page["text"])):
+            trace.append({"tool": "abstain", "reason": "no topical text match", "page": page["id"]})
+            return None, None, trace, outputs
+    predicted = call(mode == "image" or (mode == "agent" and not page["text_complete"]))
+    if mode == "agent" and page["text_complete"] and predicted is None:
         predicted = call(True)
     return predicted, page["id"] if predicted is not None else None, trace, outputs
 

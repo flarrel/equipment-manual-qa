@@ -23,6 +23,8 @@ class SmolVLM:
 
         settings = {"revision": MODEL_REVISION, "cache_dir": cache, "local_files_only": True}
         self.processor = AutoProcessor.from_pretrained(MODEL_ID, **settings)
+        # Use one bounded image view per page so CPU inference remains practical.
+        self.processor.image_processor.do_image_splitting = False
         self.model = AutoModelForImageTextToText.from_pretrained(
             MODEL_ID, dtype="float32", **settings
         ).eval()
@@ -45,8 +47,7 @@ class SmolVLM:
             inputs = self.processor(text=rendered, return_tensors="pt")
         else:
             with Image.open(image_path) as image:
-                inputs = self.processor(text=rendered, images=[image.convert("RGB")],
-                                        return_tensors="pt", do_image_splitting=False)
+                inputs = self.processor(text=rendered, images=[image.convert("RGB")], return_tensors="pt")
         with torch.inference_mode():
             output = self.model.generate(**inputs, max_new_tokens=16, do_sample=False)
         answer = self.processor.batch_decode(output[:, inputs.input_ids.shape[1]:],
@@ -55,9 +56,9 @@ class SmolVLM:
 
 
 def normalize(answer):
-    cleaned = answer.lower().strip().strip(" .!\n")
+    cleaned = answer.lower().strip().removeprefix("answer:").strip(" .!\n")
     if cleaned in {"", "unknown", "unanswerable", "i don't know", "not specified",
                    "not provided", "cannot determine", "no answer"}:
         return None
-    match = re.fullmatch(r"(\d+)(?:\s+(?:seconds?|liters?|litres?|months?|l))?", cleaned)
+    match = re.fullmatch(r"(\d+)(?:\s*(?:seconds?|liters?|litres?|months?|l))?", cleaned)
     return str(int(match[1])) if match else cleaned
